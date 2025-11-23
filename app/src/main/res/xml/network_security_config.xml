@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Permitir HTTP solo para el emulador (10.0.2.2) en desarrollo -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+    
+    <!-- Producción: todo debe ser HTTPS -->
+    <domain-config>
+        <domain includeSubdomains="true">example.com</domain>
+    </domain-config>
+</network-security-config>

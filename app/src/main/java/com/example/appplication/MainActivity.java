@@ -33,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnVehicles = findViewById(R.id.btnVehicles);
         Button btnRecords = findViewById(R.id.btnRecords);
         Button btnSummary = findViewById(R.id.btnSummary);
+        Button btnProfile = findViewById(R.id.btnProfile);
         Button btnSignOut = findViewById(R.id.btnSignOut);
 
         // Verificar si el usuario está autenticado
@@ -62,6 +63,13 @@ public class MainActivity extends AppCompatActivity {
             // TODO: Implementar SummaryActivity
             Toast.makeText(this, "Próximamente", Toast.LENGTH_SHORT).show();
         });
+
+        if (btnProfile != null) {
+            btnProfile.setOnClickListener(v -> {
+                startActivity(new Intent(this, ProfileActivity.class));
+            });
+        }
+
         if (btnSignOut != null) {
             btnSignOut.setOnClickListener(new View.OnClickListener() {
                 @Override

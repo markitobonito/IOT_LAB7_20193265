@@ -47,8 +47,20 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:32.4.1"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-storage")
     // Firebase UI para Auth (Email y Google)
     implementation("com.firebaseui:firebase-ui-auth:8.0.2")
+    // Firebase UI para Storage (para descargar imágenes con Glide)
+    implementation("com.firebaseui:firebase-ui-storage:8.0.2")
+    // Glide para cargar imágenes
+    implementation("com.github.bumptech.glide:glide:4.15.1")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
+    // Retrofit para llamadas HTTP
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+    // Gson para JSON
+    implementation("com.google.code.gson:gson:2.10.1")
     // ZXing core para generación de QR
     implementation("com.google.zxing:core:3.5.0")
     // MPAndroidChart para gráficos (resumen)

@@ -1,0 +1,473 @@
+# 🎯 RESUMEN VISUAL - LAB 7 COMPLETADO
+
+## ✅ PREGUNTA 1: Firebase Authentication (5 pts)
+
+### Clase AuthService.java
+```
+src/main/java/com/example/appplication/services/
+                        ├── AuthService.java ✨ NUEVO
+                        ├── CloudStorage.java ✨ NUEVO
+                        └── RetrofitService.java ✨ NUEVO
+```
+
+### Métodos Implementados:
+```
+✅ initializeAuth()
+   └─ Instancia FirebaseAuth y Firestore
+
+✅ signInWithEmail(email, password, callback)
+   └─ Login con correo/contraseña
+
+✅ resetPassword(email, callback)
+   └─ Envía email para recuperar contraseña
+
+✅ signOut(callback)
+   └─ Cierra la sesión del usuario
+
+✅ registerUser(email, password, name, dni, callback)
+   ├─ Valida con MICROSERVICIO primero
+   ├─ POST http://192.168.x.x:8080/registro
+   ├─ Si OK: crea usuario en Firebase Auth
+   ├─ Guarda datos en Firestore (nombre, DNI)
+   └─ Si FALLA: muestra error del microservicio
+```
+
+### Firestore Actualizado:
+```json
+users/
+├── {userId}/
+│   ├── email: "usuario@pucp.edu.pe"
+│   ├── name: "Juan Pérez"
+│   ├── dni: "12345678"
+│   ├── createdAt: Timestamp
+│   └── profileImageUrl: ""  // Vacío inicialmente
+```
+
+---
+
+## ✅ PREGUNTA 2: Firebase Storage (5 pts)
+
+### Clase CloudStorage.java
+```
+✅ uploadFile(Uri, fileName, callback)
+   └─ Sube imagen a /users/{userId}/{fileName}
+
+✅ getDownloadUrl(fileName, callback)
+   └─ Obtiene URL pública del archivo
+
+✅ fileExists(fileName, callback)
+   └─ Verifica si archivo existe
+
+✅ deleteFile(fileName, callback)
+   └─ Elimina archivo
+```
+
+### Actividad ProfileActivity.java
+```
+├─ Mostrar datos del usuario
+│  ├─ Nombre
+│  ├─ Email
+│  └─ DNI
+├─ ImageView con foto de perfil
+├─ Botón "Subir Imagen de Perfil"
+├─ Selector de galería
+├─ Progress bar durante carga
+├─ Toast con URL de almacenamiento
+└─ Visualización con Glide
+```
+
+### Cloud Storage Actualizado:
+```
+users/
+├── {userId1}/
+│   └── profile_image.jpg
+└── {userId2}/
+    └── profile_image.jpg
+```
+
+### Firestore Actualizado:
+```json
+users/
+├── {userId}/
+│   ├── email: "usuario@pucp.edu.pe"
+│   ├── name: "Juan Pérez"
+│   ├── dni: "12345678"
+│   ├── createdAt: Timestamp
+│   └── profileImageUrl: "https://firebasestorage.googleapis.com/..."
+```
+
+---
+
+## ✅ PREGUNTA 3: Ecosistema de Microservicios (10 pts)
+
+### Arquitectura:
+```
+┌──────────────────────────────────────┐
+│        Android App                    │
+│  POST http://192.168.x.x:8080/       │
+│  { "email": "...", "dni": "..." }    │
+└────────────────┬─────────────────────┘
+                 │
+                 ▼
+┌──────────────────────────────────────┐
+│    registro-service:8080              │
+│  (Orchestrator)                       │
+│  - Feign Client                       │
+│  - Eureka Client                      │
+└────────┬─────────────────────┬────────┘
+         │                     │
+         │                     │ Feign Call
+         │                     │
+         │          ┌──────────▼──────────┐
+         │          │ validacion-service  │
+         │          │ :8010               │
+         │          │ - DNI validation    │
+         │          │ - Email validation  │
+         │          │ - Eureka Client     │
+         │          └─────────────────────┘
+         │
+         ▼
+┌──────────────────────────────┐
+│   Eureka Server :8761         │
+│   (Service Registry)          │
+│   - Descubre servicios        │
+│   - Proporciona ubicaciones   │
+└──────────────────────────────┘
+```
+
+### Proyecto 1: eureka-server
+
+**Puerto:** 8761
+
+**Dependencias:**
+- spring-cloud-starter-netflix-eureka-server
+
+**Configuración:**
+```yaml
+server:
+  port: 8761
+spring:
+  application:
+    name: eureka-server
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+```
+
+**Clase principal:**
+```java
+@SpringBootApplication
+@EnableEurekaServer
+public class EurekaServerApplication
+```
+
+---
+
+### Proyecto 2: validacion-service
+
+**Puerto:** 8010
+
+**Endpoints:**
+```
+GET /validar/dni/{dni}
+    └─ Valida que DNI tenga 8 dígitos
+    ├─ 200: {"valido": true}
+    └─ 400: {"valido": false, "mensaje": "..."}
+
+GET /validar/correo/{correo}
+    └─ Valida que email termine en @pucp.edu.pe
+    ├─ 200: {"valido": true}
+    └─ 400: {"valido": false, "mensaje": "..."}
+```
+
+**Dependencias:**
+- spring-cloud-starter-netflix-eureka-client
+
+**Configuración:**
+```yaml
+server:
+  port: 8010
+spring:
+  application:
+    name: validacion-service
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+```
+
+---
+
+### Proyecto 3: registro-service
+
+**Puerto:** 8080
+
+**Endpoint:**
+```
+POST /registro
+Body: {"email": "usuario@pucp.edu.pe", "dni": "12345678"}
+
+Lógica:
+1. Recibe email y dni
+2. Feign call a validacion-service GET /validar/dni/{dni}
+3. Feign call a validacion-service GET /validar/correo/{email}
+4. Si ambas OK → HTTP 200 {"mensaje": "..."}
+5. Si alguna FALLA → HTTP 400 {"mensaje": "..."}
+```
+
+**Dependencias:**
+- spring-cloud-starter-netflix-eureka-client
+- spring-cloud-starter-openfeign
+
+**Configuración:**
+```yaml
+server:
+  port: 8080
+spring:
+  application:
+    name: registro-service
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+```
+
+---
+
+## 📦 DEPENDENCIAS AGREGADAS
+
+```gradle
+// Firebase Storage
+implementation("com.google.firebase:firebase-storage")
+implementation("com.firebaseui:firebase-ui-storage:8.0.2")
+
+// Glide para imágenes
+implementation("com.github.bumptech.glide:glide:4.15.1")
+annotationProcessor("com.github.bumptech.glide:compiler:4.15.1")
+
+// Retrofit + OkHttp + Gson para HTTP
+implementation("com.squareup.retrofit2:retrofit:2.9.0")
+implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+implementation("com.squareup.okhttp3:okhttp:4.9.3")
+implementation("com.google.code.gson:gson:2.10.1")
+```
+
+---
+
+## 📁 ARCHIVOS NUEVOS CREADOS
+
+### Java Classes:
+```
+✨ AuthService.java
+✨ CloudStorage.java
+✨ RetrofitService.java
+✨ ProfileActivity.java
+✨ MyAppGlideModule.java
+```
+
+### Layouts:
+```
+✨ activity_profile.xml
+✨ fragment_login.xml
+✨ fragment_register.xml
+```
+
+### Documentación:
+```
+✨ README.md                          (Este archivo)
+✨ INSTRUCCIONES_FINALES.md           (5 minutos para configurar)
+✨ RESUMEN_IMPLEMENTACION.md          (Detalle de cambios)
+✨ MICROSERVICIOS_CONFIGURACION.md    (Código completo P3)
+✨ VISUAL_RESUMEN.txt                 (Este documento)
+```
+
+### Modificados:
+```
+✏️ build.gradle.kts                  (Nuevas dependencias)
+✏️ AndroidManifest.xml               (ProfileActivity)
+✏️ MainActivity.java                 (Botón Mi Perfil)
+```
+
+---
+
+## 🚀 FLUJO DE EJECUCIÓN
+
+### Paso 1: Configuración (5 min)
+```bash
+1. Actualizar IP en RetrofitService.java
+   private static final String BASE_URL = "http://192.168.x.x:8080/";
+
+2. Sync Gradle en Android Studio
+   File → Sync Now
+
+3. Verificar google-services.json está en app/
+```
+
+### Paso 2: Ejecutar Microservicios
+```bash
+Terminal 1:
+  cd eureka-server
+  mvn spring-boot:run
+  
+Terminal 2:
+  cd validacion-service
+  mvn spring-boot:run
+  
+Terminal 3:
+  cd registro-service
+  mvn spring-boot:run
+```
+
+### Paso 3: Ejecutar App Android
+```bash
+Android Studio:
+  Run → Select Device → Run App
+```
+
+### Paso 4: Pruebas
+```bash
+1. Intenta registrarte con:
+   - DNI: 12345678 (8 dígitos)
+   - Email: tu_usuario@pucp.edu.pe
+   - Contraseña: 123456
+   
+2. Si OK → Usuario creado en Firebase
+3. Abre "Mi Perfil"
+4. Sube una imagen
+5. Verifica URL en toast y Firestore
+```
+
+---
+
+## 📊 VERIFICACIÓN
+
+### En Firebase Console (https://console.firebase.google.com/)
+
+**Authentication:**
+```
+✓ Usuarios registrados
+✓ Email
+✓ UID
+```
+
+**Firestore - Colección "users":**
+```json
+{
+  "email": "usuario@pucp.edu.pe",
+  "name": "Nombre",
+  "dni": "12345678",
+  "createdAt": Timestamp,
+  "profileImageUrl": "https://..."
+}
+```
+
+**Cloud Storage - Carpeta "users":**
+```
+users/
+├── userId1/
+│   └── profile_image.jpg
+└── userId2/
+    └── profile_image.jpg
+```
+
+### En Terminal (Microservicios)
+
+**Eureka Dashboard:**
+```
+http://localhost:8761/
+```
+
+Debería mostrar:
+```
+✓ validacion-service (8010)
+✓ registro-service (8080)
+```
+
+---
+
+## ✅ CHECKLIST FINAL
+
+### Android App:
+- [ ] AuthService.java compila
+- [ ] CloudStorage.java compila
+- [ ] ProfileActivity.java compila
+- [ ] RetrofitService.java con IP correcta
+- [ ] build.gradle.kts con dependencias
+- [ ] AndroidManifest.xml con ProfileActivity
+- [ ] MyAppGlideModule.java presente
+- [ ] App compila sin errores
+- [ ] Firebase conectado correctamente
+
+### Microservicios:
+- [ ] eureka-server corre en 8761
+- [ ] validacion-service corre en 8010
+- [ ] registro-service corre en 8080
+- [ ] Todos registrados en Eureka
+- [ ] Endpoints responden correctamente
+
+### Funcionalidad:
+- [ ] Login funciona
+- [ ] Recuperación de contraseña funciona
+- [ ] Registro valida con microservicio
+- [ ] Perfil carga datos correctamente
+- [ ] Subida de imagen funciona
+- [ ] Imagen se visualiza con Glide
+- [ ] URL aparece en toast
+- [ ] Datos guardados en Firestore
+
+### Documentación:
+- [ ] README.md actualizado
+- [ ] INSTRUCCIONES_FINALES.md leído
+- [ ] RESUMEN_IMPLEMENTACION.md leído
+- [ ] MICROSERVICIOS_CONFIGURACION.md leído
+
+### Entrega:
+- [ ] Video grabado (máx 3 min)
+- [ ] Código en GitHub
+- [ ] URL en Paideia
+- [ ] Commit antes de deadline
+
+---
+
+## 🎬 ESTRUCTURA DE VIDEO (Máx 3 minutos)
+
+```
+00:00-00:15  Firebase Console
+             ├─ Authentication (usuarios)
+             ├─ Firestore (datos)
+             └─ Cloud Storage (imágenes)
+
+00:15-00:45  Microservicios
+             ├─ 3 terminales corriendo
+             └─ Eureka dashboard
+
+00:45-02:30  Demo App
+             ├─ Registro exitoso
+             ├─ Login
+             ├─ Abrir Perfil
+             ├─ Subir imagen
+             └─ Ver URL
+
+02:30-03:00  Verificación
+             ├─ Datos en Firebase
+             └─ Logs de app
+```
+
+---
+
+## 🎉 ¡LISTO PARA COMENZAR!
+
+**Todos los archivos están listos.**
+**Todo el código está incluido.**
+**Solo falta configurar la IP y crear los 3 proyectos Spring Boot.**
+
+### Próximos pasos:
+1. Lee `INSTRUCCIONES_FINALES.md`
+2. Actualiza IP en RetrofitService.java
+3. Crea los 3 proyectos Spring Boot
+4. Ejecuta y prueba
+5. Graba video
+6. Sube a GitHub
+
+**¡Buena suerte! 🚀**
